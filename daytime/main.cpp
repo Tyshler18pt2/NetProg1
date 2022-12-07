@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cstdlib>
-#include <cstring>//line Г‘Г€
+#include <cstring>//line СИ
 #include <unistd.h> // for close()
 //#include
 #include <netinet/in.h>// sock_addr_in and allthing function  for network
@@ -16,42 +16,42 @@ void errors(const char* why, const int exitCode = 1)
 int main(int argc, char** argv)
 {
 
-    // ГЇГ®Г¤ГЈГ®ГІГ®ГўГЄГ  Г±ГІГ°ГіГЄГІГіГ°Г» Г± Г Г¤Г°ГҐГ±Г®Г¬ Г­Г ГёГҐГ© ГЇГ°Г®ГЈГ°Г Г¬Г¬Г» (ГЄГ«ГЁГҐГ­ГІГ )
+    // подготовка структуры с адресом нашей программы (клиента)
     sockaddr_in* selfAddr = new (sockaddr_in);
-    selfAddr->sin_family = AF_INET; //ГЁГ­ГІГҐГ°Г­ГҐГІ ГЇГ°Г®ГІГ®ГЄГ®Г« IPv4
-    selfAddr->sin_port = 0;         // ГЇГ°ГЁ ГўГ§Г ГЁГ¬Г®Г¤ГҐГ©Г±ГІГЁГўГЁГЁ Г±ГЁГ±ГІГҐГ¬Г  Г±Г Г¬Г  ГўГ»ГЎГЁГ°Г ГҐГІ ГЇГ®Г°ГІ
-    selfAddr->sin_addr.s_addr = 0;  // ГўГ±ГҐ Г Г¤Г°ГҐГ±Г  ГЄГ®Г¬ГЇГјГѕГІГҐГ°Г 
-    // Г¤Г«Гї Г±ГўГ®ГҐГЈГ® Г Г¤Г°ГҐГ±Г  Г«ГіГ·ГёГҐ ГіГЄГ Г§Г ГІГј 0,Г·ГІГ®ГЎГ» Г±ГЁГ±ГІГҐГ¬Г  ГўГ»ГЎГ°Г Г«Г  Г±Г Г¬Г  
-    // ГЇГ®Г¤ГЈГ®ГІГ®ГўГЄГ  Г±ГІГ°ГіГЄГІГіГ°Г» Г± Г Г¤Г°ГҐГ±Г®Г¬ Г±ГҐГ°ГўГҐГ°Г 
+    selfAddr->sin_family = AF_INET; //интернет протокол IPv4
+    selfAddr->sin_port = 0;         // при взаимодейстивии система сама выбирает порт
+    selfAddr->sin_addr.s_addr = 0;  // все адреса компьютера
+    // для своего адреса лучше указать 0,чтобы система выбрала сама 
+    // подготовка структуры с адресом сервера
     sockaddr_in* remoteAddr = new (sockaddr_in);
     remoteAddr->sin_family = AF_INET;
     remoteAddr->sin_port = htons(13);
     remoteAddr->sin_addr.s_addr = inet_addr("95.83.72.118");
 
-    // ГЇГ®Г¤ГЈГ®ГІГ®ГўГЄГ  ГЎГіГґГҐГ°Г  Г¤Г«Гї ГЇГҐГ°ГҐГ¤Г Г·ГЁ ГЁ ГЇГ°ГЁГҐГ¬Г  Г¤Г Г­Г­Г»Гµ
+    // подготовка буфера для передачи и приема данных
     char* buf = new char[256];
     strcpy(buf, "Give me please time");
-    int msgLen = strlen(buf); // ГўГ»Г·ГЁГ±Г«ГїГҐГ¬ Г¤Г«ГЁГ­Гі Г±ГІГ°Г®ГЄГЁ
+    int msgLen = strlen(buf); // вычисляем длину строки
 
-    // Г±Г®Г§Г¤Г Г­ГЁГҐ Г±Г®ГЄГҐГІГ 
+    // создание сокета
     int mySocket = socket(AF_INET, SOCK_STREAM, 0); //TCP
     if (mySocket == -1) {
         errors("Error open socket", 11);
     }
-    // ГЇГ°ГЁГўГїГ§ГЄГ  Г±Г®ГЄГҐГІГ  ГЄ Г±ГўГ®ГҐГ¬Гі Г Г¤Г°ГҐГ±Гі
+    // привязка сокета к своему адресу
     int rc = bind(mySocket, (const sockaddr*)selfAddr, sizeof(sockaddr_in));
     if (rc == -1) {
         close(mySocket);
         errors("Error bind socket with local address", 12);
     }
-    // ГіГ±ГІГ Г­Г®ГўГЄГ  Г±Г®ГҐГ¤ГЁГ­ГҐГ­ГЁГҐ Г± Г±ГҐГ°ГўГҐГ°Г®Г¬
-    rc = connect(mySocket, (const sockaddr*)remoteAddr/*Г Г¤Г°ГҐГ±*/, sizeof(sockaddr_in));
+    // установка соединение с сервером
+    rc = connect(mySocket, (const sockaddr*)remoteAddr/*адрес*/, sizeof(sockaddr_in));
     if (rc == -1) {
         close(mySocket);
         errors("Error bind socket with remote address", 13);
     }
-    // ГЇГҐГ°ГҐГ¤Г Г·Г  Г¤Г Г­Г­Г»Гµ
-    rc = send(mySocket, buf, msgLen, 0); // ГўГ®Г§ГўГ°Г Г№Г ГҐГІ ГЄГ®Г«ГЁГ·ГҐГ±ГІГ®ГўГ® ГЇГҐГ°ГҐГ¤Г Г­Г­Г»Гµ ГЎГ Г©ГІГ®Гў
+    // передача данных
+    rc = send(mySocket, buf, msgLen, 0); // возвращает количестово переданных байтов
     if (rc == -1) {
         close(mySocket);
         errors("Error send message", 14);
@@ -64,9 +64,9 @@ int main(int argc, char** argv)
     }
     buf[rc] = '\0';
     cout << "answer: " << buf << endl;
-    // Г§Г ГЄГ°Г»ГІГЁГҐ Г±Г®ГЄГҐГІГ 
+    // закрытие сокета
     close(mySocket);
-    // Г®Г±ГўГ®ГЎГ®Г¦Г¤ГҐГ­ГЁГҐ ГЇГ Г¬ГїГІГЁ
+    // освобождение памяти
     delete selfAddr;
     delete remoteAddr;
     delete[] buf;
