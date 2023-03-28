@@ -1,74 +1,103 @@
-#include <iostream>
-#include <cstdlib>
-#include <cstring>//line СИ
-#include <unistd.h> // for close()
-//#include
-#include <netinet/in.h>// sock_addr_in and allthing function  for network
-#include <arpa/inet.h>
-#include <sstream>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string>
+#include <iostream>
+#include <winsock2.h>
+#include <WS2tcpip.h>
+
+#pragma comment(lib, "ws2_32.lib")
 using namespace std;
-void errors(const char* why, const int exitCode = 1)
+
+#define BUFSIZE         1024   
+#define SERVER_PORT     54000   
+
+int main(void)
 {
-    cerr << why << endl;
-    exit(exitCode);
-}
-int main(int argc, char** argv)
-{
+    WSAData data;
+    WORD ver = MAKEWORD(2, 2);
+    int wsResult = WSAStartup(MAKEWORD(2, 2), &data);
+    if (wsResult != 0)
+    {
+        cerr << "WSAStartup failed, Err #" << wsResult << endl;
+        cin.get();
+        return 0;
+    }
 
-    // подготовка структуры с адресом нашей программы (клиента)
-    sockaddr_in* selfAddr = new (sockaddr_in);
-    selfAddr->sin_family = AF_INET; //интернет протокол IPv4
-    selfAddr->sin_port = 0;         // при взаимодейстивии система сама выберет порт
-    selfAddr->sin_addr.s_addr = 0;  // все адреса компьютера
-    // для своего адреса ставим 0,чтобы система сама выбирала удобный ей адрес
-    // подготовка структуры с адресом сервера
-    sockaddr_in* remoteAddr = new (sockaddr_in);
-    remoteAddr->sin_family = AF_INET;
-    remoteAddr->sin_port = htons(7);
-    remoteAddr->sin_addr.s_addr = inet_addr("95.83.72.118");//127.0.0.1
+    //РЎРѕР·РґР°РЅРёРµ СЃРѕРєРµС‚Р°
+    SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sock == INVALID_SOCKET)
+    {
+        cerr << "Can't create a socket, Err #" << WSAGetLastError() << endl;
+        cin.get();
+        WSACleanup();
+        return 0;
+    }
 
-    // подготовка буфера для передачи и приема данных
-    char* buf = new char[256];
-    strcpy(buf, "How are you?");
-    int msgLen = strlen(buf); // вычисление длины строки
+    int OptVal = 1;
+    int OptLen = sizeof(int);
+    int rc = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&OptVal, OptLen);
+    if (rc == SOCKET_ERROR)
+    {
+        cerr << "Can't set a sockopt, Err #" << WSAGetLastError() << endl;
+        cin.get();
+        WSACleanup();
+        return 0;
+    }
+    else
+        cout << "Socket option SO_REUSEADDR is ON" << endl;
 
-    // создание сокета
-    int mySocket = socket(AF_INET, SOCK_STREAM, 0); //TCP
-    if (mySocket == -1) {
-        errors("Error open socket", 11);
+    //Р—Р°РїСЂРѕСЃ РЅР° РІРІРѕРґ IP СЃРµСЂРІРµСЂР°
+    cout << "IP adress of server : ";
+    string ipAdress;
+    getline(cin, ipAdress);
+
+    //РЎС‚СЂСѓРєС‚СѓСЂР° СЃРµСЂРІРµСЂР° Рё РєР»РёРµРЅС‚Р°
+    sockaddr_in server_addr, client_addr;
+
+    int server_len = sizeof(server_addr);
+    ZeroMemory(&server_addr, server_len);
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(SERVER_PORT);
+    inet_pton(AF_INET, ipAdress.c_str(), &server_addr.sin_addr);
+
+    int client_len = sizeof(client_addr);
+    ZeroMemory(&client_addr, client_len);
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_port = htons(0);
+    client_addr.sin_addr.S_un.S_addr = INADDR_ANY;
+
+    rc = bind(sock, (struct sockaddr*)&client_addr, client_len);
+    if (rc == SOCKET_ERROR)
+    {
+        cerr << "Can't bind a socket, Err #" << WSAGetLastError() << endl;
+        cin.get();
+        WSACleanup();
+        return 0;
     }
-    // привязка сокета к своему адресу
-    int rc = bind(mySocket, (const sockaddr*)selfAddr, sizeof(sockaddr_in));
-    if (rc == -1) {
-        close(mySocket);
-        errors("Error bind socket with local address", 12);
-    }
-    // установка соединение с сервером
-    rc = connect(mySocket, (const sockaddr*)remoteAddr/*адрес*/, sizeof(sockaddr_in));
-    if (rc == -1) {
-        close(mySocket);
-        errors("Error bind socket with remote address", 13);
-    }
-    // передача данных
-    rc = send(mySocket, buf, msgLen, 0); // возвращает количестово переданных байтов
-    if (rc == -1) {
-        close(mySocket);
-        errors("Error send message", 14);
-    }
-    cout << "We send: " << buf << endl;
-    rc = recv(mySocket, buf, 256, 0);
-    if (rc == -1) {
-        close(mySocket);
-        errors("Error recevie answer", 15);
-    }
-    buf[rc] = '\0';
-    cout << "answer: " << buf << endl;
-    // закрытие сокета
-    close(mySocket);
-    // освобождение памяти
-    delete selfAddr;
-    delete remoteAddr;
-    delete[] buf;
+    char buf[BUFSIZE];
+    string userInput;
+
+    do
+    {
+        //Р—Р°РїСЂРѕСЃ РЅР° РІРІРѕРґ С‚РµРєСЃС‚Р°
+        cout << "> ";
+        getline(cin, userInput);
+
+        if (userInput.size() > 0)
+        {
+            //РћС‚РїСЂР°РІРєР° С‚РµРєСЃС‚Р°
+            int sendResult = sendto(sock, userInput.c_str(), BUFSIZE, 0, (sockaddr*)&server_addr, server_len);
+            if (sendResult == SOCKET_ERROR)
+            {
+                cerr << "Can't send msg, Err #" << WSAGetLastError() << endl;
+                cin.get();
+                return 0;
+            }
+           
+        }
+    } while (userInput.size() > 0);
+    cin.get();
+    closesocket(sock);
+    WSACleanup();
     return 0;
 }
